@@ -1,0 +1,112 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{graphicx}
+\usepackage[a4paper, left=1in, right=1in, top=1in, bottom=1in]{geometry}
+\usepackage{xcolor}
+
+\begin{document}
+
+\section{IP Problem formulation}
+
+\subsection{Tournament structure}
+The South American Qualifiers to the FIFA World Cup involve 10 national teams competing in a double round-robin tournament. Each team plays every other team exactly twice (home and away), leading to a total of 18 rounds. Matches are grouped into 9 double rounds, with each team playing two matches within a few days but months apart between double rounds.
+
+\subsection{Decision variables}
+Define the binary decision variable:
+\begin{equation}
+    x_{i,j,k} =
+    \begin{cases}
+        1, & \text{if team } i \text{ plays at home against team } j \text{ in round } k, \\
+        0, & \text{otherwise.}
+    \end{cases}
+\end{equation}
+where $i, j \in I$ (set of teams) and $k \in K$ (set of rounds).
+
+\subsection{Constraints and objective function}
+\medskip
+\noindent
+\underline{Double round-robin constraints.}
+Each team must play every other team exactly twice, once at home and once away, once in the first half and once in the second half.
+\begin{equation}
+    \sum_{k \in K, k \leq n-1} (x_{i,j,k} + x_{j,i,k}) = 1, \quad \forall i \neq j
+\end{equation}
+\begin{equation}
+    \sum_{k \in K, k > n-1} (x_{i,j,k} + x_{j,i,k}) = 1, \quad \forall i \neq j
+\end{equation}
+\begin{equation}
+    \sum_{k \in K} x_{i,j,k} = 1, \quad \forall i \neq j
+\end{equation}
+
+\medskip
+\noindent
+\underline{Compactness constraint.}
+Each team plays exactly one match in each round.
+\begin{equation}
+    \sum_{i \neq j} (x_{i,j,k} + x_{j,i,k}) = 1, \quad \forall j, k
+\end{equation}
+
+\medskip
+\noindent
+\underline{Fairness constraints.}
+No team should play Argentina and Brazil (the two historically strongest teams) consecutively.
+\begin{equation}
+    \sum_{j \in I_S} (x_{i,j,k} + x_{j,i,k} + x_{i,j,k+1} + x_{j,i,k+1}) \leq 1, \quad \forall i \notin I_S, \; k \in k \;\; \text{s.t.} \;\; |k| < K 
+\end{equation}
+where $I_S$ is the set of top teams (Argentina and Brazil).
+
+\medskip
+\noindent
+\underline{Balance constraints.}
+The balance constraints are designed to ensure that each team has a fair distribution of home-away (H-A) sequences in double rounds throughout the tournament. Since there are $n-1$ double rounds in total, the goal is to ensure that each team experiences a nearly equal number of H-A sequences (i.e., playing at home in one match of a double round and away in the other). Each team should have between $n/2-1$ and $n/2$ such sequences. For this purpose, we introduce auxiliary variables $y_{i,k}$ such that $y_{i,k}=1$ if team $i$ has an H-A sequence in the double round starting at round $k$ and $y_{i,k}=0$ otherwise. The auxiliary variables must satisfy the following constraints.
+\begin{enumerate}
+    \item Ensure the required number of H-A sequences per team:
+    \begin{equation}
+    \frac{n}{2} - 1 \leq \sum_{k \in K_{\text{odd}}} y_{i,k} \leq \frac{n}{2}, \quad \forall i \in I,
+    \end{equation}
+    \item Define when an H-A sequence occurs:
+    \begin{equation}
+    \sum_{j \in I, j \neq i} (x_{i,j,k} + x_{j,i,k+1}) \leq 1 + y_{i,k}, \quad \forall i \in I, k \in K_{\text{odd}},
+    \end{equation}
+    This ensures that if a team plays home in round $k$ and away in round $k+1$, then $y_{i,k}$ is set to 1.
+    \item Link $y_{i,k}$ to home matches in the first game of the double round:
+    \begin{equation}
+    y_{i,k} \leq \sum_{j \in I, j \neq i} x_{i,j,k}, \quad \forall i \in I, k \in K_{\text{odd}},
+    \end{equation}
+    If a team does not play at home in round $k$, then $y_{i,k}$ must be 0.
+    \item Link $y_{i,k}$ to away matches in the first game of the double round:
+    \begin{equation}
+    y_{i,k} \leq \sum_{j \in I, j \neq i} x_{j,i,k+1}, \quad \forall i \in I, k \in K_{\text{odd}}.
+    \end{equation}
+    If a team does not play away in round $k+1$, then $y_{i,k}$ must be 0.
+    \textcolor{red}{Note: The second constraint already ensures $y_{i,k}$ is 1 only when an H-A sequence occurs. This is an explicit way of enforcing that but might not be strictly necessary. We should think about whether this is r5edundant.}
+\end{enumerate}
+
+\medskip
+\noindent
+\underline{Objective function.}
+The goal is to minimize the total number of breaks in double rounds. Define auxiliary variables $w_{i,k}$ such that $w_{i,k}=1$ if team $i$ has an away break in the double round starting in round $k$, and $w_{i,k}=0$ otherwise. The objective function is given by
+\begin{equation}
+    \min \sum_{i \in I} \sum_{k \in K_{\text{odd}}} w_{i,k},
+\end{equation}
+where $K_{\text{odd}}$ represents the set of first rounds in a double round.
+The $w_{i,k}$ must satisfy the following constraints.
+\begin{enumerate}
+    \item Define an away break:
+    \begin{equation}
+    \sum_{j \in I, j \neq i} (x_{j,i,k} + x_{j,i,k+1}) \leq 1 + w_{i,k}, \quad \forall i \in I, k \in K_{\text{odd}}
+    \end{equation}
+    This ensures that if team $i$ plays both matches away in a double round, then $w_{i,k} =1$.
+    \item Setting $w_{i,k} =0$ if there is no first away game:
+    \begin{equation}
+    w_{i,k} \leq \sum_{j \in I, j \neq i} x_{j,i,k}, \quad \forall i \in I, k \in K_{\text{odd}}
+    \end{equation}
+    If team $i$ does not play away in round $k$, then $w_{i,k} =0$.
+    \item Setting $w_{i,k} =0$ if there is no second away game:
+    \begin{equation}
+    w_{i,k} \leq \sum_{j \in I, j \neq i} x_{j,i,k+1}, \quad \forall i \in I, k \in K_{\text{odd}}
+    \end{equation}
+    If team $i$ does not play away in round $k+1$, then $w_{i,k} =0$.
+\end{enumerate}
+
+\end{document}
